@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace CronNetCore
 {
@@ -11,14 +12,16 @@ namespace CronNetCore
     public class CronJob : ICronJob
     {
         private readonly ICronSchedule _cron_schedule = new CronSchedule();
-        private readonly ThreadStart _thread_start;
-        private Thread _thread;
+        private readonly Action _action;
+        private Task _thread;
+        private readonly CancellationTokenSource cancellationToken;
 
-        public CronJob(string schedule, ThreadStart thread_start)
+        public CronJob(string schedule, Action action)
         {
             _cron_schedule = new CronSchedule(schedule);
-            _thread_start = thread_start;
-            _thread = new Thread(thread_start);
+            _action = action;
+            cancellationToken = new CancellationTokenSource();
+            //_thread = new Thread(thread_start);
         }
 
         private object _lock = new object();
@@ -28,18 +31,27 @@ namespace CronNetCore
             {
                 if (!_cron_schedule.IsTime(date_time))
                     return;
+                if (_thread != null)
+                {
+                    if (!_thread.IsCompleted)
+                    {
+                        return;
+                    }
+                }
 
-                if (_thread.ThreadState == ThreadState.Running)
-                    return;
-
-                _thread = new Thread(_thread_start);
+                _thread = new Task(_action,cancellationToken.Token);
                 _thread.Start();
+                _thread.Wait();
+                _thread.Dispose();
+                _thread = null;
+               
+             
             }
         }
 
         public void Abort()
         {
-            _thread.Abort();
+            cancellationToken.Cancel();
         }
 
     }

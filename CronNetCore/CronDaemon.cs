@@ -1,13 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Threading;
 using System.Timers;
 
 namespace CronNetCore
 {
     public interface ICronDaemon
     {
-        void AddJob(string schedule, ThreadStart action);
+        void AddJob(string schedule, Action action);
         void Start();
         void Stop();
     }
@@ -23,7 +22,7 @@ namespace CronNetCore
             timer.Elapsed += Timer_elapsed;
         }
 
-        public void AddJob(string schedule, ThreadStart action)
+        public void AddJob(string schedule, Action action)
         {
             var cj = new CronJob(schedule, action);
             cron_jobs.Add(cj);
